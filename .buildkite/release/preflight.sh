@@ -21,22 +21,20 @@
 #             version of the branch's X.Y.Z. Every later step reads it from the
 #             meta-data set here.
 #   CI        not checked here yet: the approver checks tpu-inference-ci.
+#   PyPI      neither tpu-inference nor vllm-tpu has this version yet.
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=/dev/null
 source "${SCRIPT_DIR}/lib.sh"
 
 echo "--- :label: Release version"
-[[ "${BUILDKITE_BRANCH}" =~ ^releases/v([0-9]+\.[0-9]+\.[0-9]+)$ ]] \
-  || die "not a release branch: '${BUILDKITE_BRANCH}'."
-BRANCH_VERSION="${BASH_REMATCH[1]}"
-VERSION="${RELEASE_VERSION:-${BRANCH_VERSION}}"
-VERSION="${VERSION#v}"
-[[ "${VERSION}" =~ ^[0-9]+(\.[0-9]+)*((a|b|rc)[0-9]+)?(\.post[0-9]+)?(\.dev[0-9]+)?$ ]] \
-  || die "version '${VERSION}' is not a public PEP 440 version."
-[[ "${VERSION}" =~ ^([0-9]+\.[0-9]+\.[0-9]+) && "${BASH_REMATCH[1]}" == "${BRANCH_VERSION}" ]] \
-  || die "version '${VERSION}' is not a version of ${BUILDKITE_BRANCH}."
+VERSION="$(resolve_release_version)"
 echo "tpu-inference ${VERSION} from ${BUILDKITE_BRANCH} at ${BUILDKITE_COMMIT}"
+
+echo "--- :package: PyPI"
+for project in tpu-inference vllm-tpu; do
+  check_not_published "${project}" "${VERSION}"
+done
 
 buildkite-agent meta-data set release-version "${VERSION}"
 PRE="no"
@@ -45,5 +43,6 @@ buildkite-agent annotate --style info --context release-plan <<EOF
 **tpu-inference ${VERSION}** from \`${BUILDKITE_BRANCH}\` at \`${BUILDKITE_COMMIT:0:12}\` (pre-release: ${PRE})
 
 - CI: not checked automatically yet. Before approving, check that tpu-inference-ci passed on this commit: https://buildkite.com/vllm/tpu-inference-ci/builds?branch=${BUILDKITE_BRANCH}
-- Docker image and PyPI: not handled by this pipeline yet.
+- PyPI: \`tpu-inference\` and \`vllm-tpu\` ${VERSION} not there yet
+- Docker image: not handled by this pipeline yet.
 EOF
