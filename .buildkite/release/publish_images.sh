@@ -20,6 +20,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=/dev/null
 source "${SCRIPT_DIR}/lib.sh"
+die "TEST ONLY (jefft/test_docker): not publishing to Docker Hub."
 
 VERSION="$(release_version)"
 STAGED="$(buildkite-agent meta-data get release-image)"

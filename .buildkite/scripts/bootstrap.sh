@@ -16,6 +16,17 @@
 # Exit on error, exit on unset variable, fail on pipe errors.
 set -euo pipefail
 
+# TEST ONLY (jefft/test_docker): upload the release pipeline from this checkout
+# instead of CI. Its steps only run on releases/v*, and release-tpu-inference
+# isn't in this cluster, so drop the branch conditions and run every step on
+# cpu; the env reaches plan_publish.py, which reads RELEASE_QUEUE.
+{
+  printf 'env:\n  RELEASE_QUEUE: cpu\n'
+  sed -e '/^    if: build.branch/d' -e 's/queue: release-tpu-inference/queue: cpu/' \
+    .buildkite/release/pipeline.yml
+} | buildkite-agent pipeline upload
+exit 0
+
 # Resolve the absolute directory path of the current script.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 

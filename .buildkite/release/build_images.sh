@@ -67,3 +67,17 @@ docker rmi "${TAG}" >/dev/null 2>&1 || true
 buildkite-agent annotate --style info --context release-image <<EOF
 Staged image (GAR): \`${TAG}\` = \`$(digest_of "${STAGED}")\` (vLLM \`${VLLM_COMMIT_HASH:0:12}\`)
 EOF
+
+# TEST ONLY (jefft/test_docker): fetch the staged image back from GAR, and run
+# the publish copy as a dry run (nothing is pushed anywhere).
+echo "--- :mag: TEST ONLY: fetch the staged image back from GAR"
+docker pull "${STAGED}"
+FETCHED="$(docker inspect --format '{{range .RepoDigests}}{{println .}}{{end}}' "${STAGED}" \
+  | grep -m 1 "^${RELEASE_IMAGE}@sha256:")" || die "no ${RELEASE_IMAGE} digest after the pull."
+[[ "${FETCHED}" == "${STAGED}" ]] || die "fetched ${FETCHED}, not ${STAGED}."
+docker rmi "${STAGED}" >/dev/null 2>&1 || true
+echo "--- :docker: TEST ONLY: the publish copy, as a dry run"
+docker buildx imagetools create --dry-run --prefer-index=false \
+  --tag "docker.io/${RELEASE_DOCKERHUB_REPO}:v${VERSION}" "${STAGED}"
+buildkite-agent annotate --style success --context release-image-test \
+  "TEST ONLY: fetched \`${STAGED}\` back from GAR; the publish copy ran as a dry run."
